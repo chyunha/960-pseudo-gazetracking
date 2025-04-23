@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>9.60 Final Project</title>
+  <style>
+    body {
+      text-align: center;
+      font-family: Arial, sans-serif;
+    }
+    #image-container img {
+      max-width: 90%;
+      height: auto;
+      cursor: crosshair;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="instructions">
+    <p>Welcome! Please click anywhere on each image when it appears. Each image will be shown for 5 seconds.</p>
+    <button onclick="startExperiment()">Start</button>
+  </div>
+
+  <div id="image-container" style="display:none;"></div>
+
+  <script>
+    const imagePaths = [
+      'file:///Users/chloehyun/Desktop/960/action/005.jpg',
+      'file:///Users/chloehyun/Desktop/960/action/011.jpg',
+      'file:///Users/chloehyun/Desktop/960/action/015.jpg',
+      'file:///Users/chloehyun/Desktop/960/action/025.jpg'
+    ];
+
+    let currentIndex = 0;
+    const clickData = [];
+
+    function startExperiment() {
+      document.getElementById('instructions').style.display = 'none';
+      document.getElementById('image-container').style.display = 'block';
+      showNextImage();
+    }
+
+    function showNextImage() {
+      if (currentIndex >= imagePaths.length) {
+        finishExperiment();
+        return;
+      }
+
+      const container = document.getElementById('image-container');
+      container.innerHTML = '';
+
+      const img = document.createElement('img');
+      img.src = imagePaths[currentIndex];
+      img.alt = `Image ${currentIndex + 1}`;
+      img.onclick = (e) => {
+        const rect = img.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        clickData.push({
+          image: imagePaths[currentIndex],
+          x: Math.round(x),
+          y: Math.round(y),
+          timestamp: new Date().toISOString()
+        });
+      };
+
+      container.appendChild(img);
+
+      setTimeout(() => {
+        currentIndex++;
+        showNextImage();
+      }, 5000); // 5 seconds per image
+    }
+
+    function finishExperiment() {
+        document.getElementById('image-container').innerHTML = "<p>Thank you for your help!</p>";
+    }
+  </script>
+
+</body>
+</html>
