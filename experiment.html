@@ -17,15 +17,15 @@
 
 <body>
     <div id="instructions">
-        {{image_set["prompt"]}}
+        {{ prompt }}
         <button onclick="startExperiment()">Start</button>
     </div>
 
     <div id="image-container" style="display:none;"></div>
 
-    <script id="image-set-data" type="application/json">
+    <!-- <script id="image-set-data" type="application/json">
         {{image_set | tojson | safe}}
-    </script>
+    </script> -->
 
     <script>
         const participantId = "{{ participant_id }}";

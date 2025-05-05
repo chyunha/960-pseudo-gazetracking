@@ -104,7 +104,10 @@ def start():
     #         "image_set": assigned_set
     #     }, f)
 
-    return render_template("experiment.html", participant_id=participant_id, image_set=image_set_dict[curr_set_assign])
+    prompt_id = str(image_set_dict["prompt"])
+    image_ids = [value for key, value in image_set_dict.items() if key.startswith('img')]
+    
+    return render_template("experiment.html", participant_id=participant_id, image_set=image_ids, prompt=prompts[prompt_id])
 
 @app.route('/submit', methods=['POST'])
 def submit():
