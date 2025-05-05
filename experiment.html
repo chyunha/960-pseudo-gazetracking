@@ -1,82 +1,93 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>9.60 Final Project</title>
-  <style>
-    body {
-      text-align: center;
-      font-family: Arial, sans-serif;
-    }
-    #image-container img {
-      max-width: 90%;
-      height: auto;
-      cursor: crosshair;
-    }
-  </style>
+    <title>9.60 Final Experiment</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+        #image-container img {
+            max-width: 90%;
+            height: auto;
+            cursor: crosshair;
+        }
+    </style>
 </head>
+
 <body>
+    <div id="instructions">
+        {{image_set["prompt"]}}
+        <button onclick="startExperiment()">Start</button>
+    </div>
 
-  <div id="instructions">
-    <p>Welcome! Please click anywhere on each image when it appears. Each image will be shown for 5 seconds.</p>
-    <button onclick="startExperiment()">Start</button>
-  </div>
+    <div id="image-container" style="display:none;"></div>
 
-  <div id="image-container" style="display:none;"></div>
+    <script id="image-set-data" type="application/json">
+        {{image_set | tojson | safe}}
+    </script>
 
-  <script>
-    const imagePaths = [
-      'file:///Users/chloehyun/Desktop/960/action/005.jpg',
-      'file:///Users/chloehyun/Desktop/960/action/011.jpg',
-      'file:///Users/chloehyun/Desktop/960/action/015.jpg',
-      'file:///Users/chloehyun/Desktop/960/action/025.jpg'
-    ];
+    <script>
+        const participantId = "{{ participant_id }}";
+        const imageSet = JSON.parse(document.getElementById('image-set-data').textContent);
+        const imageKeys = Object.keys(imageSet).filter(k => k.startsWith("img"));
+        let index = 0;
+        let clickData = {};
+        let currentImage = "";
 
-    let currentIndex = 0;
-    const clickData = [];
+        function startExperiment() {
+            document.getElementById('instructions').style.display = 'none';
+            document.getElementById('image-container').style.display = 'block';
+            showNextImage();
+        }
 
-    function startExperiment() {
-      document.getElementById('instructions').style.display = 'none';
-      document.getElementById('image-container').style.display = 'block';
-      showNextImage();
-    }
+        const imageElement = document.getElementById("experiment-image");
 
-    function showNextImage() {
-      if (currentIndex >= imagePaths.length) {
-        finishExperiment();
-        return;
-      }
+        function showNextImage() {
+        if (index >= imageKeys.length) {
+            submitData();
+            return;
+        }
 
-      const container = document.getElementById('image-container');
-      container.innerHTML = '';
+        const imageName = imageSet[imageKeys[index]];
+        currentImage = imageName;
+        imageElement.src = `static/stimuli/${imageName}.jpg`;
+        clickData[imageName] = [];
 
-      const img = document.createElement('img');
-      img.src = imagePaths[currentIndex];
-      img.alt = `Image ${currentIndex + 1}`;
-      img.onclick = (e) => {
-        const rect = img.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        clickData.push({
-          image: imagePaths[currentIndex],
-          x: Math.round(x),
-          y: Math.round(y),
-          timestamp: new Date().toISOString()
+        setTimeout(() => {
+            index++;
+            showNextImage();
+        }, 5000); // 5 seconds per image
+        }
+
+        imageElement.addEventListener('click', (e) => {
+        const rect = imageElement.getBoundingClientRect();
+        clickData[currentImage].push({
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top,
+            timestamp: Date.now()
         });
-      };
+        });
 
-      container.appendChild(img);
+        function submitData() {
+        fetch('/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+            participant_id: participantId,
+            click_data: clickData
+            })
+        }).then(res => {
+            if (res.ok) {
+            document.body.innerHTML = "<h2>Thank you for participating!</h2>";
+            } else {
+            alert("Error saving your data.");
+            }
+        });
+        }
 
-      setTimeout(() => {
-        currentIndex++;
         showNextImage();
-      }, 5000); // 5 seconds per image
-    }
-
-    function finishExperiment() {
-        document.getElementById('image-container').innerHTML = "<p>Thank you for your help!</p>";
-    }
-  </script>
-
+    </script>
 </body>
+
 </html>
