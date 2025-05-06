@@ -1,93 +1,164 @@
 <!DOCTYPE html>
-<html>
 <head>
-    <title>9.60 Final Experiment</title>
+    <title>9.60 Final Project</title>
     <style>
         body {
-            text-align: center;
-            font-family: Arial, sans-serif;
+          text-align: center;
+          font-family: Arial, sans-serif;
         }
-        #image-container img {
-            max-width: 90%;
-            height: auto;
-            cursor: crosshair;
+        img {
+          max-width: 100%;
+          height: auto;
+          cursor: crosshair;
         }
-    </style>
+        #image-container {
+            margin: 20px 0;
+        }
+      </style>
 </head>
-
 <body>
-    <div id="instructions">
-        {{ prompt }}
-        <button onclick="startExperiment()">Start</button>
+    <div>
+        <label for="prompt_id">Prompt ID:</label>
+        <input type="number" id="prompt_id" placeholder="Enter 0, 1, or 2">
+        <br><br>
+
+        <label for="set od">Set ID:</label>
+        <input type="number" id="set_id" placeholder="Enter 0-29">
+        <br><br>
+
+        <button onclick="startExperiment()">Start Experiment</button>
     </div>
 
-    <div id="image-container" style="display:none;"></div>
+    <!-- Display prompt text -->
+    <h2 id="experiment-prompt"></h2>
 
-    <!-- <script id="image-set-data" type="application/json">
-        {{image_set | tojson | safe}}
-    </script> -->
+    <!-- Image container for image -->
+    <div id="image-container"></div>
 
     <script>
-        const participantId = "{{ participant_id }}";
-        const imageSet = JSON.parse(document.getElementById('image-set-data').textContent);
-        const imageKeys = Object.keys(imageSet).filter(k => k.startsWith("img"));
-        let index = 0;
-        let clickData = {};
-        let currentImage = "";
+        const prompts = {
+            0: "Click continuously, everywhere you look.",
+            1: "Click continuously, everywhere you look. Focus your gaze on the most important parts of the image.",
+            2: "Click continuously, everywhere you look. Focus your gaze on what you find interesting about the image."
+        };
 
-        function startExperiment() {
-            document.getElementById('instructions').style.display = 'none';
-            document.getElementById('image-container').style.display = 'block';
-            showNextImage();
-        }
+        let imageSets = {}; // This will store the dictionary with set_id -> images
+        let currentImageIndex = 0;
+        let clickData = {};  // To store click data for each image
 
-        const imageElement = document.getElementById("experiment-image");
-
-        function showNextImage() {
-        if (index >= imageKeys.length) {
-            submitData();
-            return;
-        }
-
-        const imageName = imageSet[imageKeys[index]];
-        currentImage = imageName;
-        imageElement.src = `static/stimuli/${imageName}.jpg`;
-        clickData[imageName] = [];
-
-        setTimeout(() => {
-            index++;
-            showNextImage();
-        }, 5000); // 5 seconds per image
-        }
-
-        imageElement.addEventListener('click', (e) => {
-        const rect = imageElement.getBoundingClientRect();
-        clickData[currentImage].push({
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top,
-            timestamp: Date.now()
-        });
-        });
-
-        function submitData() {
-        fetch('/submit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-            participant_id: participantId,
-            click_data: clickData
-            })
-        }).then(res => {
-            if (res.ok) {
-            document.body.innerHTML = "<h2>Thank you for participating!</h2>";
-            } else {
-            alert("Error saving your data.");
+        // Fetch the CSV file and parse it
+        async function fetchCSV() {
+            try {
+                const response = await fetch('stimuli_sets_id.csv');  // Path to your CSV file
+                const csvText = await response.text();
+                parseCSV(csvText);
+            } catch (error) {
+                console.error("Error fetching the CSV file:", error);
             }
-        });
         }
 
-        showNextImage();
+        // Parse the CSV data into a dictionary
+        function parseCSV(csvData) {
+            const lines = csvData.split("\n");
+            
+            imageSets = {}; // stores set_id -> images
+
+            // Loop through the lines to create the dictionary
+            lines.forEach(line => {
+                const values = line.split(",");
+                const setId = values[0]; // First column is set_id
+                const images = values.slice(1); // Remaining columns are image IDs
+                
+                imageSets[setId] = images; // Add to the dictionary
+            });
+        }
+
+        // Start the experiment
+        function startExperiment() {
+            const promptId = document.getElementById("prompt_id").value;
+            const setId = document.getElementById("set_id").value;
+            
+            // Get the corresponding prompt and image set
+            const prompt = prompts[promptId];
+            const setImages = imageSets[setId];
+
+            if (!prompt) {
+                alert("Invalid Prompt ID. Input was ${promptId}");
+                return;
+            }
+            if (!setId) {
+                alert("Invalid Set ID. Input was ${setId}");
+                return;
+            }
+
+            // Display the prompt
+            document.getElementById("experiment-prompt").innerText = prompt;
+
+            // Start displaying images
+            showNextImage(setImages);
+        }
+
+        // Show next image and capture clicks
+        function showNextImage(setImages) {
+            if (currentImageIndex < setImages.length) {
+                const imageName = setImages[currentImageIndex];
+                const image = document.createElement("img");
+                image.src = "stimuli/" + imageName + ".jpg"; // Assuming images are in the 'images/' folder
+                image.alt = imageName;
+                image.style.display = "block";
+                image.setAttribute("data-id", imageName);
+
+                // Capture clicks on the image
+                image.addEventListener("click", (event) => recordClick(event, imageName));
+
+                // Display the image
+                document.getElementById("image-container").appendChild(image);
+
+                // Hide the image after 5 seconds
+                setTimeout(() => {
+                    image.style.display = "none";
+                    currentImageIndex++;
+                    showNextImage(setImages);  // Show next image
+                }, 5000);
+            } else {
+                // All images have been shown, prompt for download of click data
+                downloadClickData();
+            }
+        }
+
+        // Record click data
+        function recordClick(event, imageName) {
+            if (!clickData[imageName]) {
+                clickData[imageName] = [];
+            }
+
+            const click = {
+                x: event.clientX,
+                y: event.clientY,
+                timestamp: new Date().toISOString()
+            };
+
+            clickData[imageName].push(click);
+        }
+
+        // Download the click data as JSON files
+        function downloadClickData() {
+            for (const imageName in clickData) {
+                const data = JSON.stringify(clickData[imageName], null, 2);
+                const blob = new Blob([data], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `click_data_${imageName}.json`;
+                link.click();  // Trigger download
+            }
+
+            alert("Experiment complete. Click data downloaded.");
+        }
+
+        // Fetch the CSV data when the page loads
+        window.onload = fetchCSV;
+
     </script>
 </body>
-
 </html>
