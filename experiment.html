@@ -40,6 +40,7 @@
     <div id="image-container"></div>
 
     <script>
+        document.getElementById('image-container').ondragstart = function() { return false; };
         const prompts = {
             0: "Click continuously, everywhere you look.",
             1: "Click continuously, everywhere you look. Focus your gaze on the most important parts of the image.",
@@ -127,8 +128,12 @@
                 // Hide the image after 5 seconds
                 setTimeout(() => {
                     image.style.display = "none";
-                    currentImageIndex++;
-                    showNextImage(setImages);  // Show next image
+
+                    // wait 1 second then show image
+                    setTimeout(() => {
+                        currentImageIndex++;
+                        showNextImage(setImages);
+                    }, 2000);
                 }, 5000);
             } else {
                 // All images have been shown, prompt for download of click data
@@ -138,13 +143,23 @@
 
         // Record click data
         function recordClick(event, imageName) {
+            const imageElement = event.target;
+            const rect = imageElement.getBoundingClientRect();
+
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            const normalizedX = (x / rect.width) * 1920;
+            const normalizedY = (y / rect.height) * 1080;
+
             if (!clickData[imageName]) {
                 clickData[imageName] = [];
             }
 
+            // Relative click position within the image
             const click = {
-                x: event.clientX,
-                y: event.clientY,
+                x: normalizedX,
+                y: normalizedY,
                 timestamp: new Date().toISOString()
             };
 
@@ -159,7 +174,7 @@
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement("a");
                 link.href = url;
-                link.download = `click_data_${imageName}.json`;
+                link.download = `click_data_${promptId}_${imageName}.json`;
                 link.click();  // Trigger download
             }
 
