@@ -106,7 +106,9 @@
             document.getElementById("experiment-prompt").innerText = prompt;
 
             // Start displaying images
-            showNextImage(setImages);
+            setTimeout(() => {
+                showNextImage(setImages);
+            }, 3000);
         }
 
         // Show next image and capture clicks
@@ -133,7 +135,7 @@
                     setTimeout(() => {
                         currentImageIndex++;
                         showNextImage(setImages);
-                    }, 2000);
+                    }, 1500);
                 }, 5000);
             } else {
                 // All images have been shown, prompt for download of click data
